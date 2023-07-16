@@ -1,0 +1,298 @@
+<html>
+<head>
+<style>
+#label {font-family:Arial,Helvetica,sans-serif;font-size:20px;}
+div.reading {font-family:Arial,Helvetica,sans-serif;font-size:20px;font-weight:bold;padding:20px;width:80px;}
+body {margin-right: .5in;margin-left: .25in;}
+div.projection {font-family:Arial,Helvetica,sans-serif;font-size:20px;font-weight:bold;padding:20px;}
+</style>
+<script src="jquery.1.5.1.min.js"></script>
+<script src="RGraph.common.core.js"></script>
+<script src="RGraph.hprogress.js"></script>
+<script src="RGraph.common.effects.js"></script>
+<script src="RGraph.common.dynamic.js"></script>
+<script>
+function launchFullscreen(element) {
+  if(element.requestFullScreen) {
+    element.requestFullScreen();
+  } else if(element.mozRequestFullScreen) {
+    element.mozRequestFullScreen();
+  } else if(element.webkitRequestFullScreen) {
+    element.webkitRequestFullScreen();
+  }
+}
+
+function cancelFullscreen() {
+  if(document.cancelFullScreen) {
+    document.cancelFullScreen();
+  } else if(document.mozCancelFullScreen) {
+    document.mozCancelFullScreen();
+  } else if(document.webkitCancelFullScreen) {
+    document.webkitCancelFullScreen();
+  }
+}
+
+function getData(regions, regioncolors, value)
+{
+    var accum = 0
+    var data = []
+    for(var i = 0; i < regions.length; i++) {
+        var width = regions[i]
+        if(value > accum + width) {
+            data.push(width)
+        } else if (value > accum) {
+            data.push(value - accum)
+            data.push(width - (value - accum))
+        } else {
+            data.push(width)
+        }
+        accum += width
+    }
+    return data
+}
+function getColors(regions, regioncolors, value)
+{
+    var accum = 0
+    var colors = []
+    for(var i = 0; i < regions.length; i++) {
+        var width = regions[i]
+        var color = regioncolors[i]
+        if(value > accum + width) {
+            colors.push(color)
+        } else if (value > accum) {
+            colors.push(color)
+            colors.push('white')
+        } else {
+            colors.push('white')
+        }
+        accum += width
+    }
+    return colors
+}
+
+function makeGradients(rgraphobject, regions, colors, pixelwidth)
+{
+    var regionwidth = regions[regions.length - 1] - regions[0]
+    var left = 0
+    var right = (regions[1] - regions[0]) / regionwidth
+    var gradient = rgraphobject.context.createLinearGradient(0, 0, pixelwidth, 0)
+    gradient.addColorStop(0, colors[0])
+    for(var i = 2; i < regions.length; i++) {
+        left = right
+        right = (regions[i] - regions[0]) / regionwidth
+        gradient.addColorStop(left, colors[i - 2])
+        gradient.addColorStop(left + .001, colors[i - 1])
+    }
+    gradient.addColorStop(1, colors[colors.length - 1])
+    var gradients = []
+    gradients.push(gradient)
+    return gradients
+}
+
+function indicator(regions, colors, initial, indicatorprefix, numticks, unitpost)
+{
+    // Solar Power
+    this.canvasname = indicatorprefix + "Bar"
+    this.readingname = indicatorprefix + "Reading"
+    this.regions = regions
+    this.colors = colors
+    this.value = initial
+    this.unitpost = unitpost
+
+    var values = []
+    for(var i = 1; i< regions.length; i++) {
+        values.push(regions[i] - regions[i - 1]);
+    }
+
+    this.hprogress = new RGraph.HProgress(this.canvasname, regions[0], regions[regions.length - 1], values)
+
+    var gradients = makeGradients(this.hprogress, regions, colors, document.getElementById(this.canvasname).offsetWidth)
+
+    this.hprogress
+        .Set('chart.colors', gradients)
+        .Set('chart.tickmarks', true)
+        .Set('chart.numticks', numticks)
+        .Set('chart.labels.count', numticks)
+        .Set('chart.shadow', true)
+        .Set('chart.text.size', 14)
+        .Set('chart.units.post', unitpost)
+        .Set('chart.gutter.right', 40)
+        .Set('chart.gutter.left', 40)
+
+    this.hprogress.value = initial
+    
+    this.hprogress.Draw()
+
+    this.set = function(value) {
+        this.value = value
+        this.hprogress.value = value
+        RGraph.Clear(this.hprogress.canvas)
+        this.hprogress.Draw()
+        // RGraph.Effects.HProgress.Grow(this.hprogress)
+	document.getElementById(this.readingname).innerHTML = value.toFixed() + unitpost
+    }
+}
+
+battery_watthours = 10560
+var solar = 0
+var power = 0
+var cap = 0
+var drain = 0
+
+function hours_to_hhmm(h)
+{
+    minutes = ((h * 60) % 60).toFixed()
+    hours = (h % 24).toFixed()
+    days = (h % 24).toFixed()
+    if(h < 1)
+	return minutes + " minutes"
+    else if(h < 24)
+	return hours + " hours and " + minutes + " minutes"
+    return days + " days, " + hours + " hours, and " + minutes + " minutes"
+}
+
+function update()
+{
+    solarpower.set(solar % 2000)
+    power = power % 3000
+    poweruse.set(power)
+    cap = cap % 100
+    capacity.set(cap)
+    drain = ((drain + 1000) % 2000) - 1000
+    draincharge.set(((drain + 1000) % 2000) - 1000)
+
+    if(drain == 0) {
+	projection = "No charge or discharge"
+    } else if(drain > 0) {
+	// charging
+	if(cap < 50) {
+	    remaining = ((50 - cap) / 100) * battery_watthours / drain
+	    projection = hours_to_hhmm(remaining) + " until 50% full"
+	} else if(cap < 80) {
+	    remaining = ((80 - cap) / 100) * battery_watthours / drain
+	    projection = hours_to_hhmm(remaining) + " until 80% full"
+	} else if(cap < 100) {
+	    remaining = ((100 - cap) / 100) * battery_watthours / drain
+	    projection = hours_to_hhmm(remaining) + " until 100% full"
+	} else {
+	    projection = "Batteries are full"
+	}
+    } else {
+	// discharging
+	if(cap > 80) {
+	    remaining = ((cap - 80) / 100) * battery_watthours / -drain
+	    projection = hours_to_hhmm(remaining) + " until 80% empty"
+	} else if(cap > 50) {
+	    remaining = ((cap - 50) / 100) * battery_watthours / -drain
+	    projection = hours_to_hhmm(remaining) + " until 50% empty"
+	} else if(cap > 20) {
+	    remaining = ((cap - 20) / 100) * battery_watthours / -drain
+	    projection = hours_to_hhmm(remaining) + " until 20% empty"
+	} else if(cap > 0) {
+	    remaining = ((cap) / 100) * battery_watthours / -drain
+	    projection = hours_to_hhmm(remaining) + " until empty"
+	} else {
+	    projection = "Batteries are empty"
+	}
+    }
+    document.getElementById("projection").innerHTML = projection
+}
+
+
+function idle()
+{
+    if(false) {
+	solar = solar + 50
+	power = power + 100
+	cap = cap + 3
+	drain = drain + 100
+	update()
+	if(solar <= 8000)
+	    setTimeout(idle, 1000)
+    } else {
+
+	$.getJSON("solarstats.json") //, function(data) {
+	    //solar = data.solar
+	    //power = data.poweruse
+	    //cap = data.capacity
+	    //drain = data.draincharge
+	//})
+	.done(function( json ) {
+	    solar = json.solar
+	    power = json.poweruse
+	    cap = json.capacity
+	    drain = json.draincharge
+	    update()
+	})
+	.fail(function( jqxhr, textStatus, error ) {
+	      var err = textStatus + ', ' + error;
+	      console.log( "Request Failed: " + err);
+	});
+	setTimeout(idle, 1000)
+    }
+}
+
+window.onload = function ()
+{
+    canvasnames = ['solarPowerBar', 'powerUseBar', 'capacityBar', 'chargeDrainBar']
+    for (var i = 0; i < canvasnames.length; i++) {
+        canvasname = canvasnames[i]
+        var canvas = document.getElementById(canvasname)
+        var parent = canvas.parentNode
+        canvas.width = parent.offsetWidth
+
+    }
+    document.getElementById("solarPowerBar").width = document.getElementById("solartd").offsetWidth
+    solarpower = new indicator([0,1500,2000], ['green','red'], 1200, 'solarPower', 5, 'W')
+    poweruse = new indicator([0,1500,2500,3000], ['green','yellow','red'], 300, 'powerUse', 5, 'W')
+    capacity = new indicator([0, 20, 50, 100], ['red','yellow','green'], 80, 'capacity', 5, '%')
+    draincharge = new indicator([-1000,0,1000], ['red','green'], 80, 'chargeDrain', 5, 'W')
+    //draincharge.hprogress.Set('key', ['Drain', 'Charge'])
+    //draincharge.hprogress.Set('key.colors', ['red', 'green'])
+    document.documentElement.onmousedown = function(){launchFullscreen(document.documentElement)}
+    setTimeout(idle, 100)
+}
+
+
+
+</script>
+</head>
+<body>
+
+<table width="100%" id="glance">
+
+<tr>
+<td> <div id="label"><center>Solar Power</div> </td>
+<td><center><div id="solarPowerReading" class="reading">1000</div></center></td>
+<td width="100%" id="solartd"> <canvas id="solarPowerBar" height="100">[No canvas support]</center></canvas> </td>
+</tr>
+
+<tr>
+<td>
+<div id="label"><center>Power Use</div> </td>
+<td><center><div id="powerUseReading" class="reading">1000</div></center></td>
+<td> <canvas id="powerUseBar" height="100">[No canvas support]</center></canvas> </td>
+</tr>
+
+<tr>
+<td> <div id="label"><center>Battery Capacity</div> </td>
+<td><center><div id="capacityReading" class="reading">50</div></center></td>
+<td> <canvas id="capacityBar" height="100">[No canvas support]</center></canvas> </td>
+</tr>
+
+<tr>
+<td> <div id="label"><center>Battery<br>Drain/Charge</center></center></div> </td>
+<td><center><div id="chargeDrainReading" class="reading">300</div></center></td>
+<td> <canvas id="chargeDrainBar" height="100">[No canvas support]</canvas> </td>
+</tr>
+
+</table>
+
+<center><div class="projection" id="projection"></div></center>
+<br>
+
+<a href="graphs.html">Detailed Graphs</a>
+
+</body>
+</html>
+
