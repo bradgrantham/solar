@@ -1,0 +1,52 @@
+<!doctype html>
+<html>
+    <head>
+        <style>
+            body {
+                margin: 0;
+                padding: 1in;
+            }
+
+            #container {
+                width: 100%;
+                height: 5in;
+            }
+
+            #barBackground {
+                background-color: #888;
+                height: 1in;
+            }
+
+            #bar {
+                background-color: #444;
+                width: 100%;
+                height: 100%;
+            }
+        </style>
+        <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+        <script>
+            var percent = 0;
+
+            var update = function () {
+                $("#bar").css("width", percent + "%");
+                percent++;
+                if (percent > 100) {
+                    percent = 0;
+                }
+                setTimeout(update, 20);
+            };
+
+            $(function () {
+                update();
+            });
+        </script>
+    </head>
+    <body>
+        <div id="container">
+            <div id="barBackground">
+                <div id="bar"></div>
+            </div>
+        </div>
+    </body>
+</html>
+
