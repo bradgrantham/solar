@@ -45,8 +45,8 @@ int main(int argc, char **argv)
     float battery_voltage;
     float charge_current;
     float array_voltage;
-    int battery_temp;
-    int heatsink_temp;
+    float battery_temp;
+    float heatsink_temp;
 
     std::thread* t;
     if(true) {
@@ -63,15 +63,19 @@ int main(int argc, char **argv)
                 std::string json = "{ ";
                 sprintf(str, "\"battery-sense\": %f,", bat_sense);
                 json += str;
+                sprintf(str, "\"battery-terminal\": %f,", bat_term);
+                json += str;
                 sprintf(str, "\"battery-voltage\": %f,", battery_voltage);
                 json += str;
-                sprintf(str, "\"battery-temp\": %d,", battery_temp);
+                sprintf(str, "\"battery-temp\": %f,", battery_temp);
                 json += str;
-                sprintf(str, "\"heatsink-temp\": %d,", heatsink_temp);
+                sprintf(str, "\"heatsink-temp\": %f,", heatsink_temp);
                 json += str;
                 sprintf(str, "\"array-voltage\": %f,", array_voltage);
                 json += str;
-                sprintf(str, "\"charge-current\": %f", charge_current);
+                sprintf(str, "\"charge-current\": %f,", charge_current);
+                json += str;
+                sprintf(str, "\"output-power\": %f", output_power);
                 json += str;
                 json += "}";
                 res.set_content(json, "application/json");
@@ -117,8 +121,8 @@ int main(int argc, char **argv)
         array_voltage = reg(mb, 27) / 32768.0 * vscale;
         input_power = reg(mb, 59) / 131072.0 * iscale * vscale;
         output_power = reg(mb, 58) / 131072.0 * iscale * vscale;
-        battery_temp = reg(mb, 37) / 9 / 5 + 32;
-        heatsink_temp = reg(mb, 35) / 9 / 5 + 32;
+        battery_temp = reg(mb, 37) * 9.0 / 5 + 32;
+        heatsink_temp = reg(mb, 35) * 9.0 / 5 + 32;
 
         printf("battery voltage %f\n", battery_voltage);
         printf("battery terminal voltage %f\n", bat_term);
@@ -130,8 +134,8 @@ int main(int argc, char **argv)
         printf("input power %f\n", input_power);
         printf("output power %f\n", output_power);
         // printf("conversion efficiency = %f %%\n", 100 * output_power / input_power);
-        printf("bat temp %d\n", battery_temp);
-        printf("heatsink temp %d\n", heatsink_temp);
+        printf("bat temp %f\n", battery_temp);
+        printf("heatsink temp %f\n", heatsink_temp);
         puts("");
 
         modbus_close(mb);
