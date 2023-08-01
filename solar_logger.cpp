@@ -360,11 +360,10 @@ bool modbus::reopen()
 	return false;
     }
 
-    timeval tv;
-    tv.tv_sec = (int)timeout;
-    tv.tv_usec = (int)((timeout - (int)timeout) * 1e6);
-    modbus_set_byte_timeout(mb, &tv);
-    modbus_set_response_timeout(mb, &tv);
+    uint32_t sec = (uint32_t)timeout;
+    uint32_t usec = (uint32_t)((timeout - (uint32_t)timeout) * 1e6);
+    modbus_set_byte_timeout(mb, sec, usec);
+    modbus_set_response_timeout(mb, sec, usec);
 
     return true;
 }
