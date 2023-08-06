@@ -27,8 +27,9 @@ const char* uuid_str_tempK	= "6597edec-4bda-4c1e-af4b-551c4cf74769";
 const char* uuid_str_t2go	= "65970ffe-4bda-4c1e-af4b-551c4cf74769";
 
 float state_of_charge = -1;
+float power_use = -1;
 
-static void connect_cb(gatt_connection_t* connection,  void* user_data)
+static void get_gatt_data(gatt_connection_t* connection)
 {
     if (connection != NULL) {
 
@@ -48,9 +49,28 @@ static void connect_cb(gatt_connection_t* connection,  void* user_data)
                 state_of_charge = i / 100.0f;
                 printf("SOC is %f\n", state_of_charge);
                 free(buffer);
+            } else {
+                printf("error getting SOC: %d\n", err);
+            }
+        }
+
+        // Power flow
+        if ( gattlib_string_to_uuid(uuid_str_P, strlen(uuid_str_P) + 1, &uuid) == 0){
+            size_t len;
+            uint8_t *buffer = NULL;
+
+            err =  gattlib_read_char_by_uuid(connection, &uuid, (void **)&buffer, &len);
+            if(err == GATTLIB_SUCCESS){
+                int16_t i = (buffer[1] << 8) | buffer[0];
+                power_use = -static_cast<float>(i);
+                printf("power flow is %f W\n", power_use);
+                free(buffer);
+            } else {
+                printf("error getting SOC: %d\n", err);
             }
         }
     }
+
     g_operation_completed = true;
 }
 
@@ -85,6 +105,7 @@ int main(int argc, char **argv)
     float array_voltage = -1;
     float battery_temp = -1;
     float heatsink_temp = -1;
+    time_t local_time = time(0);
 
     std::thread* t;
     if(true) {
@@ -99,6 +120,10 @@ int main(int argc, char **argv)
             svr.Get("/status", [&](const httplib::Request &, httplib::Response &res) {
                 static char str[4096];
                 std::string json = "{ ";
+                sprintf(str, "\"local-time\": %lu,", local_time);
+                json += str;
+                sprintf(str, "\"power-use\": %f,", power_use);
+                json += str;
                 sprintf(str, "\"state-of-charge\": %f,", state_of_charge);
                 json += str;
                 sprintf(str, "\"battery-sense\": %f,", bat_sense);
@@ -126,6 +151,8 @@ int main(int argc, char **argv)
     }
 
     while(1) {
+        local_time = time(0);
+
         modbus_t *mb;
         int result;
         mb = modbus_new_tcp(address, port);
@@ -181,20 +208,18 @@ int main(int argc, char **argv)
         modbus_close(mb);
         modbus_free(mb);
 
-        gatt_connection_t* con;
+        const char* deviceID = "D0:EB:11:A0:EF:1D";
 
-        const char* deviceID = "CA:9C:B9:8D:E3:70";
-
-        g_operation_completed = false;
-
-        con = gattlib_connect_async(NULL, deviceID, BDADDR_LE_RANDOM, connect_cb, 0);
-        if (con == NULL) {
-            fprintf(stderr, "Failed to connect to the bluetooth device %s.\n",deviceID);
-        } else {
-            while (!g_operation_completed);
+        gatt_connection_t* con = gattlib_connect(NULL, deviceID, BDADDR_LE_RANDOM);
+	if ((connection != NULL) && (connect_cb != NULL)) {
+	    get_gatt_data(connection);
             gattlib_disconnect(con);
             printf("BLE connection succeeded \n");
+	} else {
+            fprintf(stderr, "Failed to connect to the bluetooth device %s.\n",deviceID);
         }
+
+        puts("");
 
         sleep(5);
     }
