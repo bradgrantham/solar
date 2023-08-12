@@ -16,6 +16,8 @@ INSERT INTO channels VALUES (9, "Inverter Power Output");
 INSERT INTO channels VALUES (10, "Battery Current Flow");
 INSERT INTO channels VALUES (11, "AC Charger Output");
 INSERT INTO channels VALUES (12, "Battery State of Charge");
+INSERT INTO channels VALUES (13, "Shunt Voltage");
+INSERT INTO channels VALUES (14, "Power Flow");
 
 CREATE TABLE samples (
     sample_id    INTEGER PRIMARY KEY,
