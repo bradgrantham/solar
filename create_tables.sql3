@@ -1,0 +1,26 @@
+CREATE TABLE channels(
+    channel_id INTEGER PRIMARY KEY,
+    channel_name VARCHAR(128)
+);
+
+INSERT INTO channels VALUES (0, "Battery Voltage");
+INSERT INTO channels VALUES (1, "Target Battery Voltage");
+INSERT INTO channels VALUES (2, "Charge Current");
+INSERT INTO channels VALUES (3, "Array Voltage");
+INSERT INTO channels VALUES (4, "Output Charging Power");
+INSERT INTO channels VALUES (5, "Input Solar Power");
+INSERT INTO channels VALUES (6, "Battery Temperature Fahrenheit");
+INSERT INTO channels VALUES (7, "Heatsink Temperature Fahrenheit");
+INSERT INTO channels VALUES (8, "Inverter Power Input");
+INSERT INTO channels VALUES (9, "Inverter Power Output");
+INSERT INTO channels VALUES (10, "Battery Current Flow");
+INSERT INTO channels VALUES (11, "AC Charger Output");
+INSERT INTO channels VALUES (12, "Battery State of Charge");
+
+CREATE TABLE samples (
+    sample_id    INTEGER PRIMARY KEY,
+    timestamp    INTEGER,
+    channel_id    INTEGER,
+    value DOUBLE,
+    FOREIGN KEY(channel_id) REFERENCES channels(channel_id)
+);
